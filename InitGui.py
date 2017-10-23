@@ -31,11 +31,12 @@ class OSEDevWorkbench(FreeCADGui.Workbench):
 
     def Initialize(self):
         from PySide.QtCore import Qt
-        import chat
+        import chat, login
         self.appendToolbar("My Tools", ["MyCommand1","MyCommand2"])
         self.appendMenu("My Tools", ["MyCommand1","MyCommand2"])
         mw = FreeCADGui.getMainWindow()
-        mw.addDockWidget(Qt.BottomDockWidgetArea, chat.ChatWindow(mw))
+        login.LoginDialog(mw).show()
+        mw.addDockWidget(Qt.BottomDockWidgetArea, chat.ChatDock(mw))
 
     def Activated(self):
         #from PySide import QtGui
