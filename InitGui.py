@@ -1,5 +1,7 @@
-from PySide.QtCore import Qt
 import FreeCADGui
+import logging
+
+logging.basicConfig()
 
 
 class OSEDevWorkbench(FreeCADGui.Workbench):
@@ -30,13 +32,13 @@ class OSEDevWorkbench(FreeCADGui.Workbench):
     """
 
     def Initialize(self):
-        from PySide.QtCore import Qt
-        import chat, login
-        self.appendToolbar("My Tools", ["MyCommand1","MyCommand2"])
-        self.appendMenu("My Tools", ["MyCommand1","MyCommand2"])
-        mw = FreeCADGui.getMainWindow()
-        login.LoginDialog(mw).show()
-        mw.addDockWidget(Qt.BottomDockWidgetArea, chat.ChatDock(mw))
+        from service import OSEDevService
+        window = FreeCADGui.getMainWindow()
+        service = OSEDevService(window)
+        self.appendToolbar("OSEDev", service.command_names)
+        self.appendMenu("OSEDev", service.command_names)
+        for command in service.commands:
+            FreeCADGui.addCommand(command.id, command)
 
     def Activated(self):
         #from PySide import QtGui

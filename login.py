@@ -1,16 +1,17 @@
-from os.path import join, dirname
 import FreeCADGui
+from utils import path
 
-LoginUI, QDialog = FreeCADGui.PySideUic.loadUiType(join(dirname(__file__), 'ui/login.ui'))
+LoginUI, QDialog = FreeCADGui.PySideUic.loadUiType(path('ui', 'login.ui'))
 
 
 class LoginDialog(LoginUI, QDialog):
 
-    def __init__(self, *args, **kwargs):
-        super(LoginDialog, self).__init__(*args, **kwargs)
+    def __init__(self, parent, service):
+        super(LoginDialog, self).__init__(parent)
         self.setupUi(self)
-        self.button_box.accepted.connect(self.accept)
+        self.button_box.accepted.connect(self.connect)
         self.button_box.rejected.connect(self.reject)
+        self.service = service
 
     @property
     def username(self):
@@ -23,3 +24,7 @@ class LoginDialog(LoginUI, QDialog):
     @property
     def server(self):
         return self.server_input.text()
+
+    def connect(self):
+        self.service.connect(self.username, self.password, self.server)
+        self.accept()

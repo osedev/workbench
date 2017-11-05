@@ -1,11 +1,14 @@
-from os.path import join, dirname
 import FreeCADGui
+from utils import path
 
-ChatUI, QDockWidget = FreeCADGui.PySideUic.loadUiType(join(dirname(__file__), 'ui/chat.ui'))
+ChatUI, QDockWidget = FreeCADGui.PySideUic.loadUiType(path('ui', 'chat.ui'))
 
 
 class ChatDock(ChatUI, QDockWidget):
 
-    def __init__(self, *args, **kwargs):
-        super(ChatDock, self).__init__(*args, **kwargs)
+    def __init__(self, parent, service):
+        super(ChatDock, self).__init__(parent)
         self.setupUi(self)
+        self.service = service
+
+
