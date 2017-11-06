@@ -58,7 +58,7 @@ class Connection(Thread):
         self.password = password
         self.server = server
         self.websocket = WebSocketApp(
-            'ws://{}/streams'.format(server),
+            'ws://'+server, ['X-Username: '+username, 'X-Password: '+password],
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
