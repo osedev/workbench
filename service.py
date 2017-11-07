@@ -1,24 +1,45 @@
-from PySide.QtCore import Qt, QObject, Signal, Slot
+import json
 from websocket import WebSocketApp
 from threading import Thread
 from utils import Command
+from PySide.QtCore import Qt, QObject, Signal
 
 from chat import ChatDock
 from login import LoginDialog
 
 
-class OSEDevService(QObject):
+class Stream(QObject):
 
     connected = Signal()
     disconnected = Signal()
+    received = Signal(dict)
 
-    messaging = Signal(dict)
+    def __init__(self, service, name):
+        super(Stream, self).__init__()
+        self.service = service
+        self.name = name
+
+    def send(self, payload):
+        self.service.connection.send(json.dumps({
+            'stream': self.name, 'payload': payload
+        }))
+
+    def receive(self, message):
+        if message['stream'] == self.name:
+            self.received.emit(message['payload'])
+
+
+class OSEDevService(QObject):
 
     def __init__(self, window):
         QObject.__init__(self)
         self.window = window
         self.connection = None
-        self.chat_dock = ChatDock(self.window, self)
+        self.streams = {
+            'chat': Stream(self, 'chat'),
+            'plm': Stream(self, 'plm'),
+        }
+        self.chat_dock = ChatDock(self.window, self.streams)
         self.login_dialog = LoginDialog(self.window, self)
         self.window.addDockWidget(Qt.BottomDockWidgetArea, self.chat_dock)
         self.commands = [
@@ -33,7 +54,7 @@ class OSEDevService(QObject):
 
     @property
     def is_connected(self):
-        return False
+        return self.connection is not None and self.connection.is_connected
 
     def show_login_dialog(self):
         self.login_dialog.show()
@@ -41,7 +62,7 @@ class OSEDevService(QObject):
     def connect(self, username, password, server):
         if self.connection is not None:
             self.connection.disconnect()
-        self.connection = Connection(username, password, server)
+        self.connection = Connection(username, password, server, self)
         self.connection.start()
 
     def disconnect(self):
@@ -52,7 +73,7 @@ class OSEDevService(QObject):
 
 class Connection(Thread):
 
-    def __init__(self, username, password, server):
+    def __init__(self, username, password, server, service):
         super(Connection, self).__init__()
         self.username = username
         self.password = password
@@ -62,25 +83,37 @@ class Connection(Thread):
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
-            on_close=self.on_close
+            on_close=self.on_close,
         )
+        self.service = service
 
     def run(self):
         print("Connecting to {}...".format(self.server))
         self.websocket.run_forever()
 
-    def disconnect(self):
-        print("Disconnecting from {}...".format(self.server))
-        self.websocket.close()
-
     def on_open(self, ws):
-        print('opened')
+        for stream in self.service.streams.values():
+            stream.connected.emit()
 
     def on_message(self, ws, message):
-        print('message: {}'.format(message))
+        data = json.loads(message)
+        for stream in self.service.streams.values():
+            stream.receive(data)
 
     def on_error(self, ws, error):
         print('error: {}'.format(error))
 
-    def on_close(self, ws, *args):
-        print('closed')
+    def send(self, msg):
+        self.websocket.send(msg)
+
+    def on_close(self, ws):
+        print("Disconnecting from {}...".format(self.server))
+        for stream in self.service.streams.values():
+            stream.disconnected.emit()
+
+    def disconnect(self):
+        self.websocket.close()
+
+    @property
+    def is_connected(self):
+        return self.websocket.sock.connected
