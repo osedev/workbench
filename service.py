@@ -25,7 +25,7 @@ class Stream(QObject):
         }))
 
     def receive(self, message):
-        if message['stream'] == self.name:
+        if message['stream'].startswith(self.name):
             self.received.emit(message['payload'])
 
 

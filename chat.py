@@ -9,11 +9,20 @@ ChatUI, QDockWidget = FreeCADGui.PySideUic.loadUiType(path('ui', 'chat.ui'))
 class Room(QStandardItem):
 
     def __init__(self, data):
-        super(Room, self).__init__(data[1])
-        self.id = data[0]
-        self.name = data[1]
-        self.description = data[2]
-        self.joined = data[3]
+        super(Room, self).__init__(data['name'])
+        self.id = data['id']
+        self.name = data['name']
+        self.description = data['description']
+        self.joined = data['joined']
+        self.participants = data.get('participants', [])
+
+
+class Participant(QStandardItem):
+
+    def __init__(self, data):
+        super(Participant, self).__init__(data['name'])
+        self.id = data['id']
+        self.name = data['name']
 
 
 class ChatDock(ChatUI, QDockWidget):
@@ -27,11 +36,16 @@ class ChatDock(ChatUI, QDockWidget):
         self.room_list.setModel(QStandardItemModel(self.room_list))
         self.room_list.clicked.connect(self.view_room)
         self.room_list.activated.connect(self.join_room)
+        self.user_list.setModel(QStandardItemModel(self.user_list))
         self.chat_input.returnPressed.connect(self.send_message)
 
     def accept_stream_event(self, event):
-        if 'rooms' in event:
-            self.on_rooms(event['rooms'])
+        print(event)
+        if event['model'] == 'chat.room':
+            if event['action'] == 'list':
+                self.on_rooms(event['data'])
+            else:
+                self.on_room_action(event)
         if 'text' in event:
             self.on_message(event)
 
@@ -40,6 +54,25 @@ class ChatDock(ChatUI, QDockWidget):
         model.clear()
         for data in rooms:
             model.appendRow(Room(data))
+
+    def on_room_action(self, event):
+        model = self.room_list.model()
+        if event['action'] == 'create':
+            data = event['data']
+            data.update({
+                'id': event['pk'],
+                'joined': False
+            })
+            model.appendRow(Room(data))
+        elif event['action'] in ('update', 'delete'):
+            for idx in range(model.rowCount()):
+                item = model.item(idx)
+                if item.id == event['pk']:
+                    if event['action'] == 'update':
+                        item.setText(event['data']['name'])
+                    elif event['action'] == 'delete':
+                        model.removeRow(item.row())
+                    break
 
     def on_message(self, message):
         self.chat_view.insertPlainText("{sender}: {text}\n".format(**message))
@@ -59,6 +92,10 @@ class ChatDock(ChatUI, QDockWidget):
         if room.joined:
             self.current_room = room
             self.chat_view.clear()
+            model = self.user_list.model()
+            model.clear()
+            for data in room.participants:
+                model.appendRow(Participant(data))
         else:
             self.chat_view.setHtml(room.description)
 
