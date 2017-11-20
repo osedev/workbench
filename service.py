@@ -4,6 +4,7 @@ from threading import Thread
 from utils import Command
 from PySide.QtCore import Qt, QObject, Signal
 
+from plm import PLMDock
 from chat import ChatDock
 from login import LoginDialog
 
@@ -40,11 +41,14 @@ class OSEDevService(QObject):
             'plm': Stream(self, 'plm'),
         }
         self.chat_dock = ChatDock(self.window, self.streams)
-        self.login_dialog = LoginDialog(self.window, self)
         self.window.addDockWidget(Qt.BottomDockWidgetArea, self.chat_dock)
+        self.plm_dock = PLMDock(self.window, self.streams)
+        self.window.addDockWidget(Qt.RightDockWidgetArea, self.plm_dock)
+        self.login_dialog = LoginDialog(self.window, self)
         self.commands = [
             Command(self, self.show_login_dialog, 'Connect', 'connect.svg', 'Connect to osedev.'),
             Command(self, self.disconnect, 'Disconnect', 'disconnect.svg', 'Disconnect from osedev.'),
+            Command(self, self.plm_dock.toggleViewAction().trigger, 'Part Catalog', 'plm.svg', 'Open part catalog panel.'),
             Command(self, self.chat_dock.toggleViewAction().trigger, 'Chat', 'chat.svg', 'Open chat panel.'),
         ]
 
